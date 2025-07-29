@@ -6,39 +6,21 @@ from .models import CustomUser
 from .utils import send_verification_email, send_password_reset_email
 from rest_framework_simplejwt.tokens import RefreshToken
 from .response import custom_response
+from .serializers import RegisterSerializer, PasswordResetConfirmSerializer
+from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
 
 class RegisterView(APIView):
     def post(self, request):
-        data = request.data
-        email = data.get('email')
-        first_name = data.get('first_name')
-        last_name = data.get('last_name')
-        password = data.get('password')
-        gender = data.get('gender', '')
-
-        if not email or not first_name or not last_name or not password or not gender:
+        serializer = RegisterSerializer(data=request.data)
+        if not serializer.is_valid():
             return custom_response(
                 success=False,
-                message="Please provide email, first_name, last_name, password and gender",
+                message="Validation failed",
+                errors=serializer.errors,
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
-        if CustomUser.objects.filter(email=email).exists():
-            return custom_response(
-                success=False,
-                message="User with this email already exists",
-                status_code=status.HTTP_400_BAD_REQUEST
-            )
-
-        user = CustomUser.objects.create_user(
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            gender=gender,
-            is_active=False
-        )
-
+        user = serializer.save()
         send_verification_email(user, request)
 
         return custom_response(
@@ -51,8 +33,6 @@ class RegisterView(APIView):
 class EmailVerifyView(APIView):
     def get(self, request):
         token = request.query_params.get('token')
-        from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
-
         signer = TimestampSigner()
         try:
             email = signer.unsign(token, max_age=60*60*24)
@@ -151,12 +131,6 @@ class PasswordResetRequestView(APIView):
             message="Password reset request sent. Please check your email."
         )
 
-from rest_framework import serializers
-class PasswordResetConfirmSerializer(serializers.Serializer):
-    token = serializers.CharField()
-    new_password = serializers.CharField(min_length=6)
-
-
 class PasswordResetConfirmView(APIView):
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
@@ -164,8 +138,6 @@ class PasswordResetConfirmView(APIView):
 
         token = serializer.validated_data['token']
         new_password = serializer.validated_data['new_password']
-
-        from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
         signer = TimestampSigner()
 
         try:
