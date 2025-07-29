@@ -76,6 +76,8 @@ DATABASES = {
 
 # Custom user model
 AUTH_USER_MODEL = 'bill_buddy.CustomUser'
+AUTHENTICATION_BACKENDS = ['bill_buddy.backends.EmailBackend']
+
 
 # JWT Authentication settings
 SIMPLE_JWT = {
@@ -116,7 +118,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Email configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST')
 EMAIL_PORT = config('EMAIL_PORT', cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
