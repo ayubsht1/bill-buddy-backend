@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
-from .models import CustomUser
+from .models import CustomUser,PasswordResetToken, EmailVerificationToken
 from .utils import send_verification_email, send_password_reset_email
 from rest_framework_simplejwt.tokens import RefreshToken
 from .response import custom_response
@@ -25,7 +25,7 @@ class RegisterView(APIView):
 
         return custom_response(
             success=True,
-            message="User registered successfully. Please check your email to verify your account.",
+            message="User registered successfully, Please check your email to verify your account the link will expire in 10 minutes.",
             status_code=status.HTTP_201_CREATED
         )
 
@@ -34,8 +34,24 @@ class EmailVerifyView(APIView):
     def get(self, request):
         token = request.query_params.get('token')
         signer = TimestampSigner()
+
         try:
-            email = signer.unsign(token, max_age=60*60*24)
+            verification_token = EmailVerificationToken.objects.get(token=token)
+        except EmailVerificationToken.DoesNotExist:
+            return custom_response(
+                success=False,
+                message="Invalid token.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        if verification_token.used:
+            return custom_response(success=False, message="Token already used.")
+
+        if verification_token.is_expired():
+            return custom_response(success=False, message="Token expired.")
+
+        try:
+            email = signer.unsign(token, max_age=60 * 10)
         except (SignatureExpired, BadSignature):
             return custom_response(
                 success=False,
@@ -43,20 +59,19 @@ class EmailVerifyView(APIView):
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            user = CustomUser.objects.get(email=email)
-        except CustomUser.DoesNotExist:
-            return custom_response(
-                success=False,
-                message="User not found.",
-                status_code=status.HTTP_404_NOT_FOUND
-            )
+        user = verification_token.user
+
+        if user.email != email:
+            return custom_response(success=False, message="Token does not match user.")
 
         if user.is_active:
             return custom_response(success=True, message="Account already activated.")
 
         user.is_active = True
         user.save()
+
+        verification_token.used = True
+        verification_token.save()
 
         return custom_response(success=True, message="Email verified successfully. You can now log in.")
 
@@ -128,7 +143,7 @@ class PasswordResetRequestView(APIView):
         send_password_reset_email(user, request)
         return custom_response(
             success=True,
-            message="Password reset request sent. Please check your email."
+            message="Password reset request sent. Please check your email the link will expire in 10 minutes."
         )
 
 class PasswordResetConfirmView(APIView):
@@ -138,33 +153,26 @@ class PasswordResetConfirmView(APIView):
 
         token = serializer.validated_data['token']
         new_password = serializer.validated_data['new_password']
-        signer = TimestampSigner()
 
         try:
-            email = signer.unsign(token, max_age=60*60*24)
-        except (SignatureExpired, BadSignature):
-            return custom_response(
-                success=False,
-                message="Invalid or expired token.",
-                status_code=status.HTTP_400_BAD_REQUEST
-            )
+            reset_token = PasswordResetToken.objects.get(token=token)
+        except PasswordResetToken.DoesNotExist:
+            return custom_response(success=False, message="Invalid token", status_code=400)
 
-        try:
-            user = CustomUser.objects.get(email=email)
-        except CustomUser.DoesNotExist:
-            return custom_response(
-                success=False,
-                message="User not found.",
-                status_code=status.HTTP_404_NOT_FOUND
-            )
+        if reset_token.used:
+            return custom_response(success=False, message="Token already used", status_code=400)
 
+        if reset_token.is_expired():
+            return custom_response(success=False, message="Token expired", status_code=400)
+
+        user = reset_token.user
         user.set_password(new_password)
         user.save()
 
-        return custom_response(
-            success=True,
-            message="Password reset successful. You can now log in with the new password."
-        )
+        reset_token.used = True
+        reset_token.save()
+
+        return custom_response(success=True, message="Password reset successful")
 
 class ResendVerificationEmailView(APIView):
     def post(self, request):
@@ -196,7 +204,7 @@ class ResendVerificationEmailView(APIView):
         send_verification_email(user, request)
         return custom_response(
             success=True,
-            message="Verification email resent. Please check your inbox."
+            message="Verification email resent. Please check your inbox the link will expire in 10 minutes."
         )
 
 
@@ -223,5 +231,5 @@ class ResendPasswordResetEmailView(APIView):
         send_password_reset_email(user, request)
         return custom_response(
             success=True,
-            message="Password reset email resent. Please check your inbox."
+            message="Password reset email resent. Please check your inbox the link will expire in 10 minutes."
         )
