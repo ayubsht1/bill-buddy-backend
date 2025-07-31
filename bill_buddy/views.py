@@ -4,7 +4,8 @@ from rest_framework import status
 from django.contrib.auth import authenticate
 from .models import CustomUser,PasswordResetToken, EmailVerificationToken
 from .utils import send_verification_email, send_password_reset_email
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from rest_framework.permissions import IsAuthenticated
 from .response import custom_response
 from .serializers import RegisterSerializer, PasswordResetConfirmSerializer
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
@@ -233,3 +234,31 @@ class ResendPasswordResetEmailView(APIView):
             success=True,
             message="Password reset email resent. Please check your inbox the link will expire in 10 minutes."
         )
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            return custom_response(
+                success=False,
+                message="Refresh token is required.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            return custom_response(
+                success=True,
+                message="Logout successful."
+            )
+
+        except TokenError:
+            return custom_response(
+                success=False,
+                message="Invalid or expired refresh token.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )

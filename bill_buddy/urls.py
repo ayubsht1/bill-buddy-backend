@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (RegisterView, LoginView, EmailVerifyView, PasswordResetRequestView, PasswordResetConfirmView,
-ResendVerificationEmailView, ResendPasswordResetEmailView)
+ResendVerificationEmailView, ResendPasswordResetEmailView, LogoutView)
 
 urlpatterns = [
     path('api/register/', RegisterView.as_view(), name='register'),
@@ -10,4 +10,6 @@ urlpatterns = [
     path('api/password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     path('api/resend-verification/', ResendVerificationEmailView.as_view(), name='resend-verification'),
     path('api/resend-password-reset/', ResendPasswordResetEmailView.as_view(), name='resend-password-reset'),
+    path('api/logout/', LogoutView.as_view(), name='logout'),
+
 ]
