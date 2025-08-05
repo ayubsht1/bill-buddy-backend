@@ -10,6 +10,8 @@ from .response import custom_response
 from .serializers import RegisterSerializer, PasswordResetConfirmSerializer
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
 from django.contrib.auth import get_user_model
+from django.utils.text import slugify
+from django.db import IntegrityError, transaction
 User = get_user_model()
 
 class RegisterView(APIView):
@@ -125,30 +127,60 @@ class LoginView(APIView):
             }
         )
 
+def generate_safe_username(email):
+    base = slugify(email.split("@")[0]) or "user"
+    username = base
+    counter = 1
+    while User.objects.filter(username=username).exists():
+        username = f"{base}{counter}"
+        counter += 1
+    return username
+
 class GoogleLoginView(APIView):
     def post(self, request):
         email = request.data.get("email")
-        username = request.data.get("username")
 
-        if not email or not username:
+        if not email:
             return custom_response(
                 success=False,
-                message="Email and username are required.",
+                message="Email is required.",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
-        user, created = User.objects.get_or_create(email=email, defaults={
-            "username": username,
-            "first_name": username,  # optional default
-            "last_name": "",
-            "is_active": True,       # Auto-activate Google users
-        })
+        try:
+            with transaction.atomic():
+                user_qs = User.objects.filter(email=email)
+                if user_qs.exists():
+                    user = user_qs.get()
+                    created = False
+                else:
+                    safe_username = generate_safe_username(email)
+                    user = User.objects.create(
+                        email=email,
+                        username=safe_username,
+                        first_name="",  # optionally derive from another field if available
+                        last_name="",
+                        is_active=True,  # auto-activate Google users
+                    )
+                    created = True
+        except IntegrityError:
+            return custom_response(
+                success=False,
+                message="Database error while creating or retrieving user.",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         refresh = RefreshToken.for_user(user)
 
+        msg = (
+            "Google account created and logged in."
+            if created
+            else "Google login successful."
+        )
+
         return custom_response(
             success=True,
-            message="Google login successful." if not created else "Google account created and logged in.",
+            message=msg,
             data={
                 "refresh": str(refresh),
                 "access": str(refresh.access_token),
@@ -158,8 +190,8 @@ class GoogleLoginView(APIView):
                     "first_name": user.first_name,
                     "last_name": user.last_name,
                     "gender": user.gender,
-                }
-            }
+                },
+            },
         )
 
 
