@@ -9,6 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 from .response import custom_response
 from .serializers import RegisterSerializer, PasswordResetConfirmSerializer
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 class RegisterView(APIView):
     def post(self, request):
@@ -110,6 +112,43 @@ class LoginView(APIView):
         return custom_response(
             success=True,
             message="Login successful",
+            data={
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "user": {
+                    "username": user.username,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "gender": user.gender,
+                }
+            }
+        )
+
+class GoogleLoginView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        username = request.data.get("username")
+
+        if not email or not username:
+            return custom_response(
+                success=False,
+                message="Email and username are required.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        user, created = User.objects.get_or_create(email=email, defaults={
+            "username": username,
+            "first_name": username,  # optional default
+            "last_name": "",
+            "is_active": True,       # Auto-activate Google users
+        })
+
+        refresh = RefreshToken.for_user(user)
+
+        return custom_response(
+            success=True,
+            message="Google login successful." if not created else "Google account created and logged in.",
             data={
                 "refresh": str(refresh),
                 "access": str(refresh.access_token),

@@ -26,10 +26,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=150, unique=True)  # <-- Add this
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150)
-    gender = models.CharField(max_length=6, choices=GENDER_CHOICES)
-
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
+    gender = models.CharField(max_length=6, choices=GENDER_CHOICES, null=True, blank=True)
     groups = models.ManyToManyField(
         Group,
         related_name='customuser_set',
