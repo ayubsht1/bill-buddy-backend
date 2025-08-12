@@ -19,3 +19,12 @@ class Group(models.Model):
 
     def __str__(self):
         return self.name
+
+class Membership(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    role = models.CharField(max_length=20, choices=[('admin', 'Admin'), ('member', 'Member')])
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'group')
