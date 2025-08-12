@@ -31,6 +31,8 @@ INSTALLED_APPS = [
 
     # Local apps
     'bill_buddy',
+    'groups',
+    
 ]
 
 MIDDLEWARE = [

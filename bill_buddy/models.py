@@ -1,6 +1,9 @@
 from django.db import models
-from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager, PermissionsMixin,
-    Group, Permission)
+from groups.models import Group
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin, Permission
+from django.conf import settings
+from django.utils import timezone
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -56,9 +59,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
-
-from django.conf import settings
-from django.utils import timezone
 
 class PasswordResetToken(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='password_reset_tokens')

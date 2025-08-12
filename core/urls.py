@@ -21,4 +21,5 @@ from django.urls import include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('bill_buddy.urls')),
+    path('api/groups/', include('groups.urls')),
 ]
