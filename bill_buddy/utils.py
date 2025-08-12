@@ -65,6 +65,13 @@ def send_password_reset_email(user, request):
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
 
 
+def send_settlement_reminder(user_email, group_name, amount_due):
+    subject = f"Reminder: Settlement due in group {group_name}"
+    message = f"Hi,\n\nYou have a pending settlement of {amount_due} in the group '{group_name}'. Please settle it at your earliest convenience.\n\nThanks!"
+    send_mail(subject, message, None, [user_email])
+
+
+
 
 # from django.core.signing import TimestampSigner
 # from django.core.mail import send_mail
