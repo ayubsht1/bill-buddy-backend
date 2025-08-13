@@ -8,7 +8,7 @@ class Group(models.Model):
     description = models.TextField(blank=True)
     members = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        through='Membership' 
+        through='Membership', 
         related_name="groups_joined"
     )
     created_by = models.ForeignKey(
