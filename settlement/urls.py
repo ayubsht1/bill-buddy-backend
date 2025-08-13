@@ -1,9 +1,15 @@
+# settlements/urls.py
 from django.urls import path
-from django.http import HttpResponse
-
-def settlement_text(request):
-    return HttpResponse("settlement", content_type="text/plain")
+from .views import (
+    SettlementListCreateView,
+    SettlementDetailView,
+    NotificationListView,
+    MarkNotificationReadView,
+)
 
 urlpatterns = [
-    path("settlement/", settlement_text),
+    path("groups/<int:group_id>/settlements/", SettlementListCreateView.as_view(), name="settlement-list-create"),
+    path("settlements/<int:pk>/", SettlementDetailView.as_view(), name="settlement-detail"),
+    path("notifications/", NotificationListView.as_view(), name="notification-list"),
+    path("notifications/<int:pk>/read/", MarkNotificationReadView.as_view(), name="notification-read"),
 ]
